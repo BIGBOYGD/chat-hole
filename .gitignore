@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.tmp/
+.pkgtest/
+run-client.ps1
+run-server.ps1
+received_files/
+.lan_chat_contacts.json
+.lan_chat_peer

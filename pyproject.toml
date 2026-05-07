@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chat-hole"
+version = "0.2.0"
+description = "A LAN terminal chat tool with private chat, group chat, file transfer, and Windows notifications."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+  { name = "Chat Hole" }
+]
+license = "MIT"
+keywords = ["lan", "chat", "terminal", "windows", "cli"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: End Users/Desktop",
+  "Operating System :: Microsoft :: Windows",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = []
+
+[project.scripts]
+chat-hole = "lan_chat.cli:main"
+
+[tool.setuptools]
+packages = ["lan_chat"]
