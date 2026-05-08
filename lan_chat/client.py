@@ -40,6 +40,10 @@ class ChatClient:
     def find_user(self, target):
         target = str(target).strip()
         if target.isdigit():
+            user = self.users.get(target)
+            if user:
+                return user
+
             for user in self.users.values():
                 if str(user.get("no")) == target:
                     return user

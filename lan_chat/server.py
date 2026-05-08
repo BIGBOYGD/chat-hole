@@ -44,10 +44,17 @@ class ChatServer:
     def system_to_all(self, text):
         self.broadcast({"type": "system", "text": text})
 
+    def broadcast_users(self):
+        self.broadcast(self.users_payload())
+
     def find_client(self, target):
         target = str(target).strip()
         with self.lock:
             if target.isdigit():
+                client = self.clients.get(int(target))
+                if client:
+                    return client
+
                 online_clients = sorted(self.clients.values(), key=lambda item: item.id)
                 index = int(target) - 1
                 if 0 <= index < len(online_clients):
@@ -85,6 +92,7 @@ class ChatServer:
 
         self.send_to_client(client, {"type": "welcome", "id": client.id, "name": client.name})
         self.send_to_client(client, self.users_payload())
+        self.broadcast_users()
         self.system_to_all(f"{client.name} 加入了聊天")
         return client
 
@@ -95,6 +103,7 @@ class ChatServer:
                 members.discard(client.id)
             shutting_down = self.shutting_down
         if not shutting_down:
+            self.broadcast_users()
             self.system_to_all(f"{client.name} 离开了聊天")
 
     def handle_packet(self, client, packet):
@@ -112,8 +121,8 @@ class ChatServer:
             old_name = client.name
             with self.lock:
                 client.name = new_name
+            self.broadcast_users()
             self.system_to_all(f"{old_name} 改名为 {new_name}")
-            self.broadcast(self.users_payload())
             return
 
         if packet_type == "dm":
@@ -205,8 +214,8 @@ class ChatServer:
 
         with self.lock:
             self.groups[group_name] = member_ids
+        self.broadcast_users()
         self.system_to_all(f"{client.name} 创建了群聊 {group_name}")
-        self.broadcast(self.users_payload())
 
     def forward_group_message(self, client, packet):
         group_name = str(packet.get("group", "")).strip()
