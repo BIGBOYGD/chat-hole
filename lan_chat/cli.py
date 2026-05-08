@@ -30,7 +30,10 @@ def main():
     args = parser.parse_args()
 
     if args.server:
-        run_server(args.port)
+        try:
+            run_server(args.port)
+        except KeyboardInterrupt:
+            print("\n服务器已关闭。")
         return
 
     host = args.host

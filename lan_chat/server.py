@@ -23,6 +23,7 @@ class ChatServer:
         self.clients = {}
         self.groups = {}
         self.next_client_id = 1
+        self.shutting_down = False
         self.lock = threading.RLock()
 
     def send_to_client(self, client, packet):
@@ -46,8 +47,6 @@ class ChatServer:
     def find_client(self, target):
         target = str(target).strip()
         with self.lock:
-            if target.isdigit() and int(target) in self.clients:
-                return self.clients[int(target)]
             if target.isdigit():
                 online_clients = sorted(self.clients.values(), key=lambda item: item.id)
                 index = int(target) - 1
@@ -94,7 +93,9 @@ class ChatServer:
             self.clients.pop(client.id, None)
             for members in self.groups.values():
                 members.discard(client.id)
-        self.system_to_all(f"{client.name} 离开了聊天")
+            shutting_down = self.shutting_down
+        if not shutting_down:
+            self.system_to_all(f"{client.name} 离开了聊天")
 
     def handle_packet(self, client, packet):
         packet_type = packet.get("type")
@@ -262,10 +263,26 @@ class ChatServer:
             except OSError:
                 pass
 
+    def shutdown(self):
+        with self.lock:
+            self.shutting_down = True
+            clients = list(self.clients.values())
+        self.broadcast({"type": "system", "text": "服务器正在关闭，客户端将自动退出。"})
+        for client in clients:
+            try:
+                client.conn.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            try:
+                client.conn.close()
+            except OSError:
+                pass
+
 
 def run_server(port=DEFAULT_PORT):
     server = ChatServer()
     discovery_stop = None
+    connection_threads = []
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
@@ -288,13 +305,25 @@ def run_server(port=DEFAULT_PORT):
         while True:
             try:
                 conn, addr = sock.accept()
+            except KeyboardInterrupt:
+                print("\n服务器已关闭。")
+                break
             except socket.timeout:
                 continue
-            thread = threading.Thread(target=server.handle_connection, args=(conn, addr), daemon=True)
+            connection_threads = [item for item in connection_threads if item.is_alive()]
+            thread = threading.Thread(target=server.handle_connection, args=(conn, addr), name="lan-chat-client", daemon=True)
+            connection_threads.append(thread)
             thread.start()
     except KeyboardInterrupt:
         print("\n服务器已关闭。")
     finally:
         if discovery_stop:
             discovery_stop.set()
-        sock.close()
+            discovery_stop.join(timeout=0.2)
+        server.shutdown()
+        try:
+            sock.close()
+        except OSError:
+            pass
+        for thread in connection_threads:
+            thread.join(timeout=1.0)

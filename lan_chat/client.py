@@ -1,4 +1,5 @@
 import base64
+import os
 import re
 import socket
 import threading
@@ -24,6 +25,8 @@ class ChatClient:
         self.mode = None
         self.target = ""
         self.send_lock = threading.Lock()
+        self.worker_lock = threading.Lock()
+        self.worker_threads = []
         self.running = True
 
     def send(self, packet):
@@ -38,7 +41,7 @@ class ChatClient:
         target = str(target).strip()
         if target.isdigit():
             for user in self.users.values():
-                if str(user.get("no")) == target or str(user.get("id")) == target:
+                if str(user.get("no")) == target:
                     return user
         lowered = target.lower()
         for user in self.users.values():
@@ -121,7 +124,7 @@ class ChatClient:
         if packet_type == "welcome":
             self.my_id = packet.get("id")
             self.name = packet.get("name", self.name)
-            print_line(f"已连接服务器。你的编号: {self.my_id}，名字: {self.name}")
+            print_line(f"已连接服务器。名字: {self.name}")
             return
 
         if packet_type == "list":
@@ -169,8 +172,11 @@ class ChatClient:
             read_json_lines(self.sock, self.handle_packet)
         except OSError:
             pass
+        was_running = self.running
         self.running = False
-        print_line("已断开服务器连接。")
+        if was_running:
+            print_line("服务器已关闭，客户端已退出。")
+            os._exit(0)
 
     def print_help(self):
         print_line("命令:")
@@ -219,7 +225,9 @@ class ChatClient:
             print_line("这个路径不是普通文件。")
             return
 
-        thread = threading.Thread(target=self.send_file_worker, args=(path,), daemon=True)
+        thread = threading.Thread(target=self.send_file_worker, args=(path,), name="lan-chat-file-send")
+        with self.worker_lock:
+            self.worker_threads.append(thread)
         thread.start()
 
     def send_file_worker(self, path):
@@ -295,9 +303,12 @@ class ChatClient:
                     print_line("用法: /p 名字或序号")
                     continue
                 user = self.find_user(target)
+                if not user:
+                    print_line("找不到这个联系人。先用 /l 查看在线联系人，然后输入显示的序号或名字。")
+                    continue
                 self.mode = "dm"
-                self.target = str(user["id"]) if user else target
-                print_line(f"当前会话: 私聊 {user['name'] if user else target}")
+                self.target = str(user["id"])
+                print_line(f"当前会话: 私聊 {user['name']}")
                 continue
 
             group = command_arg(line, ["/g", "/群聊"])
@@ -348,10 +359,24 @@ class ChatClient:
             self.send_current_text(line)
 
         self.running = False
+        self.close()
+
+    def close(self):
+        self.running = False
+        try:
+            self.sock.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
         try:
             self.sock.close()
         except OSError:
             pass
+
+    def join_workers(self):
+        with self.worker_lock:
+            threads = list(self.worker_threads)
+        for thread in threads:
+            thread.join()
 
 
 def run_client(host, port, name):
@@ -359,6 +384,11 @@ def run_client(host, port, name):
     sock.settimeout(None)
     client = ChatClient(sock, name)
     send_json(sock, {"type": "hello", "name": name})
-    thread = threading.Thread(target=client.listen, daemon=True)
+    thread = threading.Thread(target=client.listen, name="lan-chat-listener")
     thread.start()
-    client.command_loop()
+    try:
+        client.command_loop()
+    finally:
+        client.close()
+        thread.join()
+        client.join_workers()

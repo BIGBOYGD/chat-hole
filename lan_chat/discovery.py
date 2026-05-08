@@ -10,6 +10,21 @@ from .utils import is_private_lan_ip, local_ips
 DISCOVERY_MAGIC = "chat-hole-discovery-v1"
 
 
+class DiscoveryBroadcast:
+    def __init__(self, stop_event, thread):
+        self._stop_event = stop_event
+        self._thread = thread
+
+    def set(self):
+        self._stop_event.set()
+
+    def is_set(self):
+        return self._stop_event.is_set()
+
+    def join(self, timeout=None):
+        self._thread.join(timeout)
+
+
 def _broadcast_addresses():
     addresses = {"255.255.255.255"}
     for ip in local_ips():
@@ -49,9 +64,9 @@ def start_discovery_broadcast(port=DEFAULT_PORT, interval=DEFAULT_DISCOVERY_INTE
         finally:
             sock.close()
 
-    thread = threading.Thread(target=loop, daemon=True)
+    thread = threading.Thread(target=loop, name="lan-chat-discovery", daemon=True)
     thread.start()
-    return stop_event
+    return DiscoveryBroadcast(stop_event, thread)
 
 
 def discover_servers(port=DEFAULT_PORT, timeout=DEFAULT_DISCOVERY_TIMEOUT):

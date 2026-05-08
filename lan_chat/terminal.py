@@ -156,6 +156,10 @@ def read_chat_line(prompt=DEFAULT_PROMPT):
             return line
 
         if ch == "\003":
+            with io_lock:
+                input_active = False
+                input_buffer = []
+                clear_current_line()
             raise KeyboardInterrupt
 
         if ch == "\b":
