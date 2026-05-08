@@ -10,7 +10,20 @@ from pathlib import Path
 
 from .config import FILE_CHUNK_SIZE, RECEIVED_DIR
 from .protocol import read_json_lines, send_json
-from .terminal import clear_screen, notify, print_line, read_chat_line, set_ui_style, toggle_ui_style
+from .terminal import (
+    clear_screen,
+    enable_input_area,
+    notify,
+    print_cyber_banner,
+    print_line,
+    prompt_toolkit_available,
+    read_chat_line,
+    reset_terminal_for_exit,
+    restore_terminal_area,
+    rich_available,
+    set_ui_style,
+    toggle_ui_style,
+)
 from .utils import command_arg, timestamp
 
 
@@ -180,6 +193,7 @@ class ChatClient:
         self.running = False
         if was_running:
             print_line("服务器已关闭，客户端已退出。")
+            reset_terminal_for_exit()
             os._exit(0)
 
     def print_help(self):
@@ -189,7 +203,7 @@ class ChatClient:
         print_line("  /c 群名 成员1 成员2 创建群聊")
         print_line("  /g 群名            切换到群聊")
         print_line("  /img 文件路径      发送图片或文件")
-        print_line("  /ui [plain|fancy]  切换终端界面样式")
+        print_line("  /ui [plain|cyber]  切换终端界面样式")
         print_line("  /clear             清除当前终端文本")
         print_line("  /n 新名字          修改自己的名字")
         print_line("  /t                 测试提醒")
@@ -200,22 +214,25 @@ class ChatClient:
         style = value.strip().lower()
         if not style:
             style = toggle_ui_style()
-        elif style in {"plain", "off", "0", "默认", "关"}:
+        elif style in {"plain", "off", "0", "default", "默认", "关"}:
             set_ui_style("plain")
             style = "plain"
-        elif style in {"fancy", "on", "1", "美化", "开"}:
-            set_ui_style("fancy")
-            style = "fancy"
+        elif style in {"fancy", "cyber", "on", "1", "美化", "炫酷", "开"}:
+            set_ui_style("cyber")
+            style = "cyber"
         else:
-            print_line("用法: /ui [plain|fancy]")
+            print_line("用法: /ui [plain|cyber]")
             return
 
         if style == "plain":
             print_line("终端界面样式: plain")
             return
 
-        print_line("──────────────── chat-hole fancy UI ────────────────")
-        print_line("终端界面样式: fancy")
+        clear_screen()
+        print_cyber_banner()
+        print_line("终端界面样式: cyber")
+        print_line(f"Rich render: {'on' if rich_available() else 'off'}")
+        print_line(f"prompt_toolkit input: {'on' if prompt_toolkit_available() else 'off'}")
 
     def print_contacts(self):
         print_line("在线联系人:")
@@ -394,6 +411,7 @@ class ChatClient:
             self.send_current_text(line)
 
         self.running = False
+        restore_terminal_area()
         self.close()
 
     def close(self):
@@ -422,8 +440,11 @@ def run_client(host, port, name):
     thread = threading.Thread(target=client.listen, name="lan-chat-listener")
     thread.start()
     try:
+        clear_screen()
+        enable_input_area()
         client.command_loop()
     finally:
+        reset_terminal_for_exit()
         client.close()
         thread.join()
         client.join_workers()

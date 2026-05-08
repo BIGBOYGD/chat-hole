@@ -37,7 +37,7 @@ chat/
 - Windows PowerShell / Windows Terminal / VS Code 终端均可
 - 所有客户端和服务器在同一个局域网内
 
-不需要安装第三方依赖。
+安装包会自动安装 Rich 和 prompt_toolkit。Windows 下 `/ui cyber` 使用 Rich 做终端美化，输入控制沿用默认界面的固定底部输入逻辑；默认 `plain` 界面仍保持原来的轻量文本风格。
 
 ## 安装
 
@@ -140,7 +140,7 @@ chat-hole 192.168.19.14 --port 9001 --name 一条咸鱼
 | `/g 群名` | 切换到群聊 |
 | `/c 群名 成员1 成员2` | 创建群聊 |
 | `/img 文件路径` | 向当前会话发送图片或文件 |
-| `/ui [plain\|fancy]` | 切换终端界面样式，默认 plain |
+| `/ui [plain\|cyber]` | 切换终端界面样式，默认 plain |
 | `/clear` | 清除当前终端文本 |
 | `/n 新名字` | 修改自己的显示名字 |
 | `/t` | 测试消息提醒 |
@@ -155,7 +155,7 @@ chat-hole 192.168.19.14 --port 9001 --name 一条咸鱼
 /群聊 项目组
 /建群 项目组 小王 小李
 /图片 D:\test\a.png
-/美化 fancy
+/美化 cyber
 /清屏
 /改名 新名字
 /提醒测试
@@ -164,10 +164,10 @@ chat-hole 192.168.19.14 --port 9001 --name 一条咸鱼
 
 ## 终端界面样式
 
-默认界面是 `plain`，也就是原来的无美化文本界面。进入客户端后可以切换到带颜色和提示样式的 PowerShell/Windows Terminal 界面：
+默认界面是 `plain`，也就是原来的无美化文本界面。进入客户端后可以切换到基于 Rich 和 prompt_toolkit 的炫酷终端风格：
 
 ```text
-/ui fancy
+/ui cyber
 ```
 
 恢复默认界面：
@@ -176,7 +176,11 @@ chat-hole 192.168.19.14 --port 9001 --name 一条咸鱼
 /ui plain
 ```
 
-也可以只输入 `/ui`，在 `plain` 和 `fancy` 之间来回切换。中文命令 `/美化 fancy`、`/界面 plain` 也可用。
+也可以只输入 `/ui`，在 `plain` 和 `cyber` 之间来回切换。`/ui fancy` 会作为 `cyber` 的兼容别名；中文命令 `/美化 cyber`、`/界面 plain` 也可用。
+
+`cyber` 模式会清屏并绘制 CHAT-HOLE CYBERLINK 横幅，聊天记录会以 Rich 霓虹卡片显示。Windows 下输入栏沿用和 `plain` 相同的固定底部控制逻辑，避免第三方输入渲染和聊天输出互相覆盖。
+
+聊天输入行会固定在终端底部，新的聊天记录和系统消息会在上方滚动显示。
 
 ## 私聊
 

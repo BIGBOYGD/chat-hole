@@ -25,7 +25,10 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
 ]
-dependencies = []
+dependencies = [
+  "rich>=13.7",
+  "prompt_toolkit>=3.0",
+]
 
 [project.scripts]
 chat-hole = "lan_chat.cli:main"
