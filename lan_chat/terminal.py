@@ -9,17 +9,89 @@ io_lock = threading.RLock()
 input_active = False
 input_buffer = []
 input_prompt = DEFAULT_PROMPT
+ui_style = "plain"
+
+RESET = "\033[0m"
+DIM = "\033[2m"
+BOLD = "\033[1m"
+CYAN = "\033[36m"
+GREEN = "\033[32m"
+YELLOW = "\033[33m"
+MAGENTA = "\033[35m"
+RED = "\033[31m"
+BLUE = "\033[34m"
+
+STYLE_NAMES = {"plain", "fancy"}
+
+
+def set_ui_style(style):
+    global ui_style
+    if style not in STYLE_NAMES:
+        raise ValueError(f"unknown UI style: {style}")
+    ui_style = style
+
+
+def get_ui_style():
+    return ui_style
+
+
+def toggle_ui_style():
+    set_ui_style("fancy" if ui_style == "plain" else "plain")
+    return ui_style
+
+
+def color(text, ansi):
+    if ui_style == "plain":
+        return text
+    return f"{ansi}{text}{RESET}"
+
+
+def format_prompt(prompt):
+    if ui_style == "plain":
+        return prompt
+    if prompt.startswith("["):
+        end = prompt.find("]")
+        if end != -1:
+            return f"{BOLD}{CYAN}{prompt[:end + 1]}{RESET}{BOLD} > {RESET}"
+    return f"{BOLD}{BLUE}> {RESET}"
+
+
+def format_line(line):
+    if ui_style == "plain" or not line:
+        return line
+
+    if line.startswith("[绯荤粺]") or line.startswith("[系统]"):
+        return color(line, DIM)
+    if line.startswith("[閿欒") or line.startswith("[错误]"):
+        return color(line, RED)
+    if "->" in line:
+        return color(line, GREEN)
+    if line.startswith("[") and "][" in line:
+        return color(line, CYAN)
+    if line.startswith("  /") or line.startswith("  \\"):
+        return color(line, YELLOW)
+    if line.startswith("鍛戒护") or line.startswith("命令"):
+        return color(line, BOLD + MAGENTA)
+    if line.startswith("─") or line.startswith("-"):
+        return color(line, DIM)
+    return line
 
 
 def clear_current_line():
     print("\r\033[2K", end="", flush=True)
 
 
+def clear_screen():
+    with io_lock:
+        print("\033[2J\033[H", end="", flush=True)
+
+
 def redraw_input_line():
-    print(f"{input_prompt}{''.join(input_buffer)}", end="", flush=True)
+    print(f"{format_prompt(input_prompt)}{''.join(input_buffer)}", end="", flush=True)
 
 
 def print_line(line=""):
+    line = format_line(line)
     with io_lock:
         if input_active:
             clear_current_line()

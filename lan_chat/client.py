@@ -10,7 +10,7 @@ from pathlib import Path
 
 from .config import FILE_CHUNK_SIZE, RECEIVED_DIR
 from .protocol import read_json_lines, send_json
-from .terminal import notify, print_line, read_chat_line
+from .terminal import clear_screen, notify, print_line, read_chat_line, set_ui_style, toggle_ui_style
 from .utils import command_arg, timestamp
 
 
@@ -189,10 +189,33 @@ class ChatClient:
         print_line("  /c 群名 成员1 成员2 创建群聊")
         print_line("  /g 群名            切换到群聊")
         print_line("  /img 文件路径      发送图片或文件")
+        print_line("  /ui [plain|fancy]  切换终端界面样式")
+        print_line("  /clear             清除当前终端文本")
         print_line("  /n 新名字          修改自己的名字")
         print_line("  /t                 测试提醒")
         print_line("  /q                 退出")
-        print_line("中文命令也可用: /联系人 /私聊 /建群 /群聊 /图片 /改名 /退出")
+        print_line("中文命令也可用: /联系人 /私聊 /建群 /群聊 /图片 /美化 /界面 /清屏 /改名 /退出")
+
+    def set_ui_command(self, value):
+        style = value.strip().lower()
+        if not style:
+            style = toggle_ui_style()
+        elif style in {"plain", "off", "0", "默认", "关"}:
+            set_ui_style("plain")
+            style = "plain"
+        elif style in {"fancy", "on", "1", "美化", "开"}:
+            set_ui_style("fancy")
+            style = "fancy"
+        else:
+            print_line("用法: /ui [plain|fancy]")
+            return
+
+        if style == "plain":
+            print_line("终端界面样式: plain")
+            return
+
+        print_line("──────────────── chat-hole fancy UI ────────────────")
+        print_line("终端界面样式: fancy")
 
     def print_contacts(self):
         print_line("在线联系人:")
@@ -295,6 +318,9 @@ class ChatClient:
             if line in {"/h", "/帮助", "帮助", "help"}:
                 self.print_help()
                 continue
+            if line in {"/clear", "/cls", "/清屏", "清屏", "clear", "cls"}:
+                clear_screen()
+                continue
             if line in {"/l", "/联系人", "联系人", "ls"}:
                 self.send({"type": "list"})
                 time.sleep(0.1)
@@ -345,6 +371,11 @@ class ChatClient:
                     print_line("用法: /img 文件路径")
                     continue
                 self.send_current_file(file_path)
+                continue
+
+            ui_value = command_arg(line, ["/ui", "/style", "/美化", "/界面"])
+            if ui_value is not None:
+                self.set_ui_command(ui_value)
                 continue
 
             new_name = command_arg(line, ["/n", "/改名"])
