@@ -3,6 +3,8 @@ import re
 import shutil
 import sys
 import threading
+import time
+from pathlib import Path
 
 from .config import DEFAULT_PROMPT
 
@@ -58,6 +60,9 @@ BLUE = "\033[34m"
 STYLE_NAMES = {"plain", "fancy", "cyber"}
 ANSI_PATTERN = re.compile(r"\033\[[0-9;]*[A-Za-z]")
 rich_console = Console(force_terminal=True, color_system="truecolor", width=120, record=True) if Console else None
+NOTIFICATION_SOUND_ENV = "CHAT_HOLE_NOTIFY_SOUND"
+NOTIFICATION_SOUND_PATTERNS = ("*.wav", "*.mp3")
+OSC_ST = "\033\\"
 
 
 def terminal_size():
@@ -501,13 +506,100 @@ def print_cyber_banner():
 
 def clear_terminal_alert():
     with io_lock:
-        print("\033]9;4;0;0\a", end="", flush=True)
+        print(f"\033]9;4;0;0{OSC_ST}", end="", flush=True)
+
+
+def notification_sound_path():
+    configured = os.environ.get(NOTIFICATION_SOUND_ENV, "").strip().strip("\"'")
+    if configured:
+        path = Path(configured).expanduser()
+        if path.is_file():
+            return path
+
+    for base_dir in (Path.cwd(), Path(__file__).resolve().parent.parent):
+        sound_dir = base_dir / "sound"
+        if not sound_dir.is_dir():
+            continue
+        for pattern in NOTIFICATION_SOUND_PATTERNS:
+            matches = sorted(sound_dir.glob(pattern))
+            if matches:
+                return matches[0]
+    return None
+
+
+def play_wav_notification(sound_path):
+    if not sys.platform.startswith("win"):
+        return False
+
+    try:
+        import winsound
+    except ImportError:
+        return False
+
+    try:
+        winsound.PlaySound(str(sound_path), winsound.SND_FILENAME | winsound.SND_ASYNC)
+        return True
+    except RuntimeError:
+        return False
+
+
+def play_mp3_notification(sound_path):
+    if not sys.platform.startswith("win"):
+        return False
+
+    try:
+        import ctypes
+    except ImportError:
+        return False
+
+    winmm = ctypes.windll.winmm
+    alias = f"chat_hole_notify_{os.getpid()}_{threading.get_ident()}_{int(time.monotonic() * 1000)}"
+
+    def send_mci(command):
+        buffer = ctypes.create_unicode_buffer(256)
+        error = winmm.mciSendStringW(command, buffer, len(buffer), None)
+        return error, buffer.value
+
+    error, _ = send_mci(f'open "{sound_path}" type mpegvideo alias {alias}')
+    if error:
+        return False
+
+    error, _ = send_mci(f"play {alias} from 0")
+    if error:
+        send_mci(f"close {alias}")
+        return False
+
+    def close_after_playback():
+        try:
+            _, length = send_mci(f"status {alias} length")
+            duration_ms = int(length) if length.isdigit() else 1500
+            time.sleep(min(max(duration_ms / 1000 + 0.25, 0.25), 10.0))
+        finally:
+            send_mci(f"close {alias}")
+
+    threading.Thread(target=close_after_playback, daemon=True).start()
+    return True
+
+
+def play_notification_sound():
+    sound_path = notification_sound_path()
+    if not sound_path:
+        return False
+
+    suffix = sound_path.suffix.lower()
+    if suffix == ".wav":
+        return play_wav_notification(sound_path)
+    if suffix == ".mp3":
+        return play_mp3_notification(sound_path)
+    return False
 
 
 def notify():
+    played_sound = play_notification_sound()
     with io_lock:
-        print("\a", end="", flush=True)
-        print("\033]9;4;2;100\a", end="", flush=True)
+        if not played_sound:
+            print("\a", end="", flush=True)
+        print(f"\033]9;4;2;100{OSC_ST}", end="", flush=True)
 
     if not sys.platform.startswith("win"):
         return

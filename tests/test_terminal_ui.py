@@ -160,6 +160,27 @@ class TerminalUiTests(unittest.TestCase):
         self.assertEqual("\033[0m\033[?25h\033[?2004l\033[r\033[24;1H\033[2K", output.getvalue())
         restore_mode.assert_called_once_with()
 
+    def test_notify_uses_st_terminated_alert_without_bell_when_sound_plays(self):
+        output = StringIO()
+
+        with patch.object(terminal.sys, "platform", "linux"):
+            with patch("lan_chat.terminal.play_notification_sound", return_value=True):
+                with patch("sys.stdout", output):
+                    terminal.notify()
+
+        self.assertEqual(f"\033]9;4;2;100{terminal.OSC_ST}", output.getvalue())
+        self.assertNotIn("\a", output.getvalue())
+
+    def test_notify_falls_back_to_bell_when_sound_does_not_play(self):
+        output = StringIO()
+
+        with patch.object(terminal.sys, "platform", "linux"):
+            with patch("lan_chat.terminal.play_notification_sound", return_value=False):
+                with patch("sys.stdout", output):
+                    terminal.notify()
+
+        self.assertEqual(f"\a\033]9;4;2;100{terminal.OSC_ST}", output.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

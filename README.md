@@ -275,12 +275,13 @@ chat-hole 192.168.19.14 --name 小高
 
 收到别人发来的消息时，程序会触发：
 
-- 终端铃声
+- `sound` 文件夹中的自定义 WAV/MP3 提示音
 - Windows Terminal / PowerShell 任务栏闪烁
 - Windows Terminal 标签页提醒状态
 
 注意：
 
+- 默认会自动使用工程根目录 `sound` 文件夹里的第一个 `.wav` 或 `.mp3` 文件，也可以用 `CHAT_HOLE_NOTIFY_SOUND` 环境变量指定完整路径
 - 当前窗口在前台时，Windows 可能不会明显闪烁
 - 窗口最小化或在后台时提醒更明显
 - 按任意键后会清除 Windows Terminal 标签页上的提醒状态
