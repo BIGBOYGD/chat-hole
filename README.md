@@ -143,7 +143,6 @@ chat-hole 192.168.19.14 --port 9001 --name 一条咸鱼
 | `/ui [plain\|cyber]` | 切换终端界面样式，默认 plain |
 | `/clear` | 清除当前终端文本 |
 | `/n 新名字` | 修改自己的显示名字 |
-| `/t` | 测试消息提醒 |
 | `/h` | 查看帮助 |
 | `/q` | 退出客户端 |
 
@@ -158,7 +157,6 @@ chat-hole 192.168.19.14 --port 9001 --name 一条咸鱼
 /美化 cyber
 /清屏
 /改名 新名字
-/提醒测试
 /退出
 ```
 
@@ -280,12 +278,6 @@ chat-hole 192.168.19.14 --name 小高
 - 终端铃声
 - Windows Terminal / PowerShell 任务栏闪烁
 - Windows Terminal 标签页提醒状态
-
-手动测试：
-
-```text
-/t
-```
 
 注意：
 

@@ -9,6 +9,9 @@ class TerminalUiTests(unittest.TestCase):
     def tearDown(self):
         with patch("sys.stdout", StringIO()):
             terminal.restore_terminal_area()
+        terminal.input_active = False
+        terminal.input_buffer = []
+        terminal.input_prompt = terminal.DEFAULT_PROMPT
         terminal.output_row = 1
         terminal.set_ui_style("plain")
 
@@ -121,6 +124,21 @@ class TerminalUiTests(unittest.TestCase):
         self.assertIn("\033[1;1H\033[2Kone", rendered)
         self.assertIn("\033[2;1H\033[2Ktwo", rendered)
         self.assertIn("\033[3;1H\033[2Kthree", rendered)
+
+    def test_refresh_input_prompt_redraws_active_input_line(self):
+        output = StringIO()
+
+        with patch("lan_chat.terminal.terminal_size", return_value=(80, 24)):
+            with patch("sys.stdout", output):
+                terminal.enable_input_area()
+                terminal.input_active = True
+                terminal.input_prompt = "[私聊:old] > "
+                terminal.input_buffer = ["h", "i"]
+                changed = terminal.refresh_input_prompt("[私聊:new] > ")
+
+        self.assertTrue(changed)
+        self.assertEqual("[私聊:new] > ", terminal.input_prompt)
+        self.assertTrue(output.getvalue().endswith("[私聊:new] > hi"))
 
     def test_move_to_bottom_prompt_line_restores_scroll_and_clears_last_line(self):
         output = StringIO()

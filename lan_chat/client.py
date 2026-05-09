@@ -18,6 +18,7 @@ from .terminal import (
     print_line,
     prompt_toolkit_available,
     read_chat_line,
+    refresh_input_prompt,
     reset_terminal_for_exit,
     restore_terminal_area,
     rich_available,
@@ -49,6 +50,11 @@ class ChatClient:
     def set_users(self, packet):
         self.users = {str(user["id"]): user for user in packet.get("users", [])}
         self.groups = {group["name"]: group.get("members", []) for group in packet.get("groups", [])}
+        self.refresh_current_prompt()
+
+    def refresh_current_prompt(self):
+        if self.mode == "dm":
+            refresh_input_prompt(self.prompt())
 
     def find_user(self, target):
         target = str(target).strip()
@@ -206,7 +212,6 @@ class ChatClient:
         print_line("  /ui [plain|cyber]  切换终端界面样式")
         print_line("  /clear             清除当前终端文本")
         print_line("  /n 新名字          修改自己的名字")
-        print_line("  /t                 测试提醒")
         print_line("  /q                 退出")
         print_line("中文命令也可用: /联系人 /私聊 /建群 /群聊 /图片 /美化 /界面 /清屏 /改名 /退出")
 
@@ -401,11 +406,6 @@ class ChatClient:
                     print_line("用法: /n 新名字")
                     continue
                 self.send({"type": "rename", "name": new_name})
-                continue
-
-            if line in {"/t", "/提醒测试", "提醒测试"}:
-                notify()
-                print_line("已触发提醒测试。窗口在后台时效果更明显。")
                 continue
 
             self.send_current_text(line)

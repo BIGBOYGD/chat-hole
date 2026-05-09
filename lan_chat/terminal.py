@@ -283,8 +283,6 @@ def format_rich_line(line):
         return render_badge_line("FILE", line, "bold black on #34e8ff", "#d6fbff")
     if any(word in line for word in ("还没有", "找不到", "不存在", "不是", "失败", "关闭", "错误")):
         return render_badge_line("WARN", line, "bold white on red", "bold #ffb3b3")
-    if line.startswith("已触发提醒测试"):
-        return render_badge_line("NOTICE", line, "bold black on #ffe66d", "#fff0a6")
     if line.startswith("*") or line.startswith("-"):
         return rich_to_ansi(Text(line, style="bright_magenta dim"))
     if "->" in line:
@@ -466,6 +464,18 @@ def redraw_input_line():
     print(f"{prompt}{text}", end="", flush=True)
 
 
+def refresh_input_prompt(prompt):
+    global input_prompt
+    with io_lock:
+        if input_prompt == prompt:
+            return False
+        input_prompt = prompt
+        if input_active:
+            redraw_input_line()
+            return True
+    return False
+
+
 def print_line(line=""):
     line = format_line(line)
     with io_lock:
@@ -609,7 +619,6 @@ def read_prompt_toolkit_line(prompt=DEFAULT_PROMPT):
                 "/c",
                 "/img",
                 "/n",
-                "/t",
                 "/h",
                 "/q",
                 "/美化",
